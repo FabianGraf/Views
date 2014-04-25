@@ -1,0 +1,14 @@
+select
+distinct l.[Location Code],
+l.[Item No_] as EAN, 
+cast(sum(l.Quantity) as int) as InStock, 
+cc.[LocationCodeILEA]
+
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Item Ledger Entry] l with (nolock)
+inner join 
+(Select distinct 
+c.[Location Code], c.LocationCodeILEA
+from BI_Data.item.ILEA_Code_Config c with (nolock)) as cc
+on l.[Location Code] = cc.[Location Code] collate Latin1_General_CI_AS
+
+where l.[Location Code] in ('BER_FIEGE','WINDELBAR','USTER')
