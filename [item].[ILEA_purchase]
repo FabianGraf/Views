@@ -1,0 +1,19 @@
+SELECT
+pl.No_ AS EAN,
+cast(SUM(pl.[Outstanding Quantity] * pl.[Qty_ per Unit of Measure]) as int) AS InPurchase, 
+pl.[Location Code], 
+cc.LocationCodeILEA
+
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Purchase Header] AS ph WITH (NOLOCK)
+INNER JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Purchase Line] AS pl WITH (NOLOCK)
+	ON pl.[Document No_] = ph.No_
+
+inner join BI_Data.item.ILEA_Code_Config as cc WITH (NOLOCK)
+on pl.[Location Code] = cc.[Location Code] collate Latin1_General_CI_AS 
+
+WHERE pl.[Document Type] = 1
+
+GROUP BY 
+pl.No_, 
+pl.[Location Code], 
+cc.LocationCodeILEA
