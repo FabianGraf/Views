@@ -1,0 +1,24 @@
+SELECT
+sl.No_ AS EAN,
+cast(SUM(sl.[Outstanding Quantity]) as int) AS InSales, 
+sl.[Location Code], 
+sh.[Reason Code], 
+case 
+when sh.[Reason Code] = ' ' 
+then case when sl.[Location Code] = 'BER_FIEGE' then 'FIEGE' else sl.[Location Code] end collate Latin1_General_CI_AS else cc.LocationCodeILEA end as LocationCodeILEA
+
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Header] AS sh WITH (NOLOCK)
+INNER JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Line] AS sl WITH (NOLOCK)
+	ON sl.[Document No_] = sh.No_
+
+Left JOIN BI_Data.item.ILEA_Code_Config cc
+	on sl.[Location Code] = cc.[Location Code] collate Latin1_General_CI_AS and sh.[Reason Code] = cc.[Reason Code] collate Latin1_General_CI_AS
+
+where sl.[Location Code] in ('BER_FIEGE','WINDELBAR','USTER') and sl.[Document Type] in (1,11)
+
+Group by 
+sl.No_, 
+sl.[Location Code], 
+sh.[Reason Code],
+case when sh.[Reason Code] = ' ' 
+then case when sl.[Location Code] = 'BER_FIEGE' then 'FIEGE' else sl.[Location Code] end  collate Latin1_General_CI_AS else cc.LocationCodeILEA end 
