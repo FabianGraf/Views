@@ -1,0 +1,23 @@
+SELECT 
+ISNULL(bom.No_, sl.No_) AS EAN,
+cast(SUM(sl.[Quantity (Base)] * ISNULL(bom.[Quantity per], 1)) as int) AS InTransfer, 
+sl.[Shop Code], 
+cc.LocationCodeILEA, 
+sl.[Withdrawal Stock (Order)]
+
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesLine] AS sl WITH (NOLOCK)
+INNER JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesHeader] AS sh WITH (NOLOCK)
+	ON sh.No_ = sl.[Document No_]
+LEFT OUTER JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$BOM Component] AS bom WITH (NOLOCK)
+	ON bom.[Parent Item No_] = sl.No_
+	
+INNER JOIN BI_Data.item.ILEA_Code_Config cc
+	on sl.[Withdrawal Stock (Order)] = cc.[Location Code] collate Latin1_General_100_CS_AS and sl.[Shop Code] = cc.[Shop Code] collate Latin1_General_100_CS_AS 
+
+WHERE (sh.Status = 0) 
+
+GROUP BY 
+ISNULL(bom.No_, sl.No_), 
+sl.[Shop Code], 
+cc.LocationCodeILEA, 
+sl.[Withdrawal Stock (Order)]
