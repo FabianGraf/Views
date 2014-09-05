@@ -10,7 +10,7 @@ a.Kategorie_lang,
 a.Atikelklasse,
 a.Einkaeufer, 
 Lagerbestand.Lagerbestand, 
-Lagerbestand.[Item No_] * Preise.[Unit Cost] as Lagerwert,
+Lagerbestand.Lagerbestand * Preise.[Unit Cost] as Lagerwert,
 Verkauf.LetzterVerkauf, 
 einkauf.LetzterEinkauf,
 DATEDIFF(DD,Verkauf.LetzterVerkauf,GETDATE()) as TageSeitLetztemVerkauf, 
@@ -96,7 +96,9 @@ Left Outer Join DWH_Staging.item.Artikelstammdaten as a
 	
 Left Outer Join 
 (
-select *
+select 
+sku.[Item No_], 
+cast(sku.[Unit Cost] as decimal (10,2)) as [Unit Cost]
 from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Stockkeeping Unit] as sku
 where sku.[Location Code] = 'BER_FIEGE'
 ) as Preise
