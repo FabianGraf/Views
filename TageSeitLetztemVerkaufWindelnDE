@@ -1,0 +1,103 @@
+Select 
+Lagerbestand.[Item No_] as EAN,
+a.Item_Beschreibung_1, 
+a.Item_Beschreibung_2, 
+a.Marke, 
+a.Kreditor, 
+a.Kreditorname,
+a.Kategorie_kurz, 
+a.Kategorie_lang,
+a.Atikelklasse,
+a.Einkaeufer, 
+Lagerbestand.Lagerbestand, 
+Lagerbestand.[Item No_] * Preise.[Unit Cost] as Lagerwert,
+Verkauf.LetzterVerkauf, 
+einkauf.LetzterEinkauf,
+DATEDIFF(DD,Verkauf.LetzterVerkauf,GETDATE()) as TageSeitLetztemVerkauf, 
+DATEDIFF(DD,Einkauf.LetzterEinkauf,GETDATE()) as TageSeitLetztemEinkauf
+
+from
+(
+Select 
+ile.[Item No_], 
+cast(sum(ile.Quantity) as int) as Lagerbestand
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Item Ledger Entry] as ile
+where ile.[Location Code] in ('BER_FIEGE', 'FIEGE', 'GROUP7', 'KAMINO') 
+and ile.[Source No_] not in 
+	(
+	select No_
+	from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Customer] 
+	where [Customer Posting Group] = 'INTERN'
+	) 
+and ile.[Source No_] not in 
+	(
+	select No_
+	from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Vendor] 
+	where [Vendor Posting Group] = 'INTERN'
+	)
+Group By 
+ile.[Item No_]
+Having
+cast(sum(ile.Quantity) as int) > 0
+) as Lagerbestand
+
+Left Outer Join
+(
+Select 
+il.[Item No_],
+max(cast(il.[Posting Date] as date)) as LetzterVerkauf
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Item Ledger Entry] as il
+where il.[Source No_] not in 
+	(
+	select No_
+	from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Customer] 
+	where [Customer Posting Group] = 'INTERN'
+	) 
+and il.[Document Type] = 1 
+and il.[Source No_] not in 
+	(
+	select No_
+	from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Vendor] 
+	where [Vendor Posting Group] = 'INTERN'
+	)
+and il.[Location Code] in ('BER_FIEGE', 'FIEGE', 'GROUP7', 'KAMINO') 
+Group By 
+il.[Item No_]
+) as Verkauf
+	on Lagerbestand.[Item No_] = Verkauf.[Item No_]
+
+Left Outer Join
+(
+Select 
+il.[Item No_],
+max(cast(il.[Posting Date] as date)) as LetzterEinkauf
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Item Ledger Entry] as il
+where il.[Source No_] not in 
+	(
+	select No_
+	from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Customer] 
+	where [Customer Posting Group] = 'INTERN'
+	) 
+and il.[Document Type] = 5 
+and il.[Source No_] not in 
+	(
+	select No_
+	from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Vendor] 
+	where [Vendor Posting Group] = 'INTERN'
+	)
+and il.[Location Code] in ('BER_FIEGE', 'FIEGE', 'GROUP7', 'KAMINO') 
+Group By 
+il.[Item No_]
+) as Einkauf
+	on Lagerbestand.[Item No_] = Einkauf.[Item No_]
+
+Left Outer Join DWH_Staging.item.Artikelstammdaten as a
+	on Lagerbestand.[Item No_] = a.EAN collate Latin1_General_CI_AS
+	
+Left Outer Join 
+(
+select *
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Stockkeeping Unit] as sku
+where sku.[Location Code] = 'BER_FIEGE'
+) as Preise
+	on Lagerbestand.[Item No_] = Preise.[Item No_]
