@@ -23,18 +23,6 @@ ile.[Item No_],
 cast(sum(ile.Quantity) as int) as Lagerbestand
 from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Item Ledger Entry] as ile
 where ile.[Location Code] in ('BER_FIEGE', 'FIEGE', 'GROUP7', 'KAMINO') 
-and ile.[Source No_] not in 
-	(
-	select No_
-	from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Customer] 
-	where [Customer Posting Group] = 'INTERN'
-	) 
-and ile.[Source No_] not in 
-	(
-	select No_
-	from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Vendor] 
-	where [Vendor Posting Group] = 'INTERN'
-	)
 Group By 
 ile.[Item No_]
 Having
@@ -103,3 +91,5 @@ from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Stockkeeping Unit] as sku
 where sku.[Location Code] = 'BER_FIEGE'
 ) as Preise
 	on Lagerbestand.[Item No_] = Preise.[Item No_]
+	
+where Lagerbestand.[Item No_] = '4008976094951'
