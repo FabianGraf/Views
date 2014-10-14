@@ -1,0 +1,40 @@
+with KategorieMilupa as
+(select 
+distinct a.Kategorie_lang
+from DWH_Staging.item.Artikelstammdaten as a
+where a.Kreditorname like '%Milupa%' and a.EAN != '4029753203236')
+
+
+Select 
+sh.[Posting Date],
+sl.No_ as EAN, 
+a.Item_Beschreibung_1, 
+a.Item_Beschreibung_2,
+sh.[Reason Code],
+a.kreditorname,
+a.Marke,
+a.Kategorie_lang, 
+a.kategorie_kurz,
+cast(SUM(sl.Quantity) as int) as Absatz, 
+cast(sum(sl.Amount) as money) as Revenue
+
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Invoice Header] as  sh with (nolock)
+inner join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Invoice Line] as sl with (nolock)
+	on sh.No_ = sl.[Document No_]
+Left Outer Join DWH_Staging.item.Artikelstammdaten a
+	on sl.No_ = a.EAN collate Latin1_General_CI_AS
+Inner join KategorieMilupa
+	on a.Kategorie_lang = KategorieMilupa.Kategorie_lang
+	
+where sh.[Posting Date] >= '2013-01-01' and sh.[Reason Code] in ('WINDELN_DE', 'WINDELN_CH', 'LADEN') and DATEDIFF(WEEK,sh.[Posting Date],GETDATE()) >= 1 --and a.Kreditorname like '%Milupa%' 
+
+Group By
+sh.[Posting Date],
+sl.No_, 
+a.Item_Beschreibung_1, 
+a.Item_Beschreibung_2,
+sh.[Reason Code],
+a.kreditorname,
+a.Marke,
+a.Kategorie_lang, 
+a.kategorie_kurz
