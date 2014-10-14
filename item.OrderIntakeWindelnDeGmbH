@@ -1,0 +1,60 @@
+with frequency as
+(SELECT
+No_,
+esh.[Order Date] as 'Order Date',
+ROW_NUMBER() OVER(PARTITION BY esh.[Sell-to Account No_] ORDER BY esh.[Order Date]) as Row_ges,
+ROW_NUMBER() OVER(PARTITION BY esh.[Sell-to Account No_], esh.[Shop Code] ORDER BY esh.[Order Date]) as Row_shop,
+case when (ROW_NUMBER() OVER(PARTITION BY esh.[Sell-to Account No_] ORDER BY esh.[Order Date])) = 1 then 'new' else 'repeat' end Auftragsstatus_ges,
+case when (ROW_NUMBER() OVER(PARTITION BY esh.[Sell-to Account No_], esh.[Shop Code] ORDER BY esh.[Order Date])) = 1 
+				then 'new' else 'repeat' end Auftragsstatus_shop
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesHeader] as esh
+Group by 
+[No_],
+esh.[Sell-to Account No_], 
+esh.[Order Date], 
+esh.[Shop Code])
+
+
+select
+cast(esh.[Order Date] as Date) as OrderDate, 
+esh.No_,
+esh.[Sell-to Account No_],
+esh.[Shop Code] as Shop, 
+esl.No_ as EAN,
+frequency.Auftragsstatus_ges, 
+frequency.Auftragsstatus_shop,
+a.item_beschreibung_1, 
+a.item_beschreibung_2, 
+a.Kategorie_kurz, 
+a.Kategorie_lang,
+a.marke, 
+a.kreditorname,
+mc.gruppe,
+cast(sum(esl.Quantity) as int) as Quantity, 
+cast(sum(esl.Quantity * esl.[Unit Price]) as money) as OrderIntakeIncVAT
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesHeader] as esh with (nolock)
+inner join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesLine] as esl with (nolock)
+	on esh.No_ = esl.[Document No_]
+left outer join frequency
+	on esh.No_ = frequency.No_
+Left Outer Join DWH_Staging.item.Artikelstammdaten as a with (nolock)
+	on esl.No_ = a.EAN collate Latin1_General_CI_AS
+Left Outer Join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCAccount] as ena with (nolock) 
+	on esh.[Sell-to Account No_] = ena.No_
+Left Outer Join MAG_BI_Import.dbo.mage_customer as mc 
+	on ena.[Customer No_] = mc.No_ collate Latin1_General_CI_AS
+Group By
+cast(esh.[Order Date] as Date), 
+esh.No_,
+esh.[Sell-to Account No_],
+esh.[Shop Code], 
+esl.No_,
+frequency.Auftragsstatus_ges, 
+frequency.Auftragsstatus_shop,
+a.item_beschreibung_1, 
+a.item_beschreibung_2, 
+a.Kategorie_kurz, 
+a.Kategorie_lang,
+a.marke, 
+a.kreditorname,
+mc.gruppe
