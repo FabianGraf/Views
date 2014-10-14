@@ -1,0 +1,28 @@
+Select
+si.EAN,
+a.Item_Beschreibung_1,
+a.Item_Beschreibung_2,
+a.Kreditor,
+a.Kreditorname,
+a.Marke,
+a.Kategorie_kurz as Hauptkategorie,
+a.Kategorie_lang as Unterkategorie,
+SUM(si.Quantity) as Abverkauf,
+SUM(si.Amount) as Nettoumsatz,
+ROW_NUMBER() OVER(PARTITION BY a.Kategorie_kurz ORDER BY SUM(si.Amount) DESC) AS [Row Number]
+from BI_Data.item.SalesInvoice si with (nolock)
+left join
+DWH_Staging.item.Artikelstammdaten a with (nolock)
+on a.EAN = si.EAN collate Latin1_General_CI_AS
+where DATEDIFF(dd,si.PostingDate_SIH,getdate()) <= 180 and ReasonCode = 'WINDELN_DE'
+group by
+si.EAN,
+a.Item_Beschreibung_1,
+a.Item_Beschreibung_2,
+a.Kreditor,
+a.Kreditorname,
+a.Marke,
+a.Kategorie_kurz,
+a.Kategorie_lang 
+having
+SUM(si.Amount) > 0
