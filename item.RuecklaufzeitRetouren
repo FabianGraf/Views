@@ -1,0 +1,14 @@
+SELECT 
+datediff(day,[Order Date], [Posting Date]) as DiffOrderRetInTagen,
+esh.[Order Date],
+esh.No_ as DocumentNo,
+sum(esl.Quantity) as Retourenmenge,
+sum(esl.Amount) as Retourenwert
+FROM Urban_NAV600_SL.[dbo].[Urban-Brand GmbH$eBayFFSalesHeader] as esh
+inner join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayFFSalesLine] as esl
+	on esh.No_ = esl.[Document No_] and esh.[Entry No_] = esl.[Document Entry No_]
+Where esh.Type = 3 and esh.[Reason Code] = 'WINDELN_DE' and esh.[Sell-to Customer No_] not in ('D1130991','D1486526','D1050291')
+Group By 
+datediff(day,[Order Date], [Posting Date]),
+esh.[Order Date],
+esh.No_
