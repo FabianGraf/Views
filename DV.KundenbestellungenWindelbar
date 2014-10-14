@@ -1,0 +1,71 @@
+Select 
+Orders.OrderDate, 
+Orders.ExternalDocumentNo,
+Orders.Auftragsstatus_shop,
+Orders.EAN, 
+a.item_beschreibung_1,
+a.item_beschreibung_2,
+a.Marke, 
+a.Kreditor,
+a.Kreditorname,
+pim.Farbe, 
+pim.Groesse,
+Orders.DealID, 
+st.Startdate, 
+st.Enddate,
+vt.DealName,
+Orders.OrderQuantity, 
+Orders.OrderAmount
+
+from
+(
+Select 
+sih."Order Date" as OrderDate,
+sih."External Document No_" as ExternalDocumentNo,
+case when (ROW_NUMBER() OVER(PARTITION BY sih."Sell-to Account No_", sih."Shop Code" ORDER BY sih."Order Date")) = 1 then 'New' else 'Repeat' end Auftragsstatus_shop,
+sil.No_ as EAN,
+sil."Dimension Value 2" as DealID,
+sum(sil.Quantity) as OrderQuantity,
+sum(sil.Quantity * sil."Unit Price") as OrderAmount
+from "nav.Urban-Brand GmbH$eBayNavCSalesHeader"   as sih 
+inner join "nav.Urban-Brand GmbH$eBayNavCSalesLine" as sil
+	on sih."No_" = sil."Document No_" 
+where sih."Shop Code" = 'WINDELBAR'
+Group by 
+sih."Order Date",
+sih."Sell-to Account No_",
+sih."External Document No_",
+sih."Shop Code", 
+sil.No_,
+sil."Dimension Value 2"
+) as Orders
+
+left outer join "views.StartAndEndDateDeals" as st
+	on Orders.DealID = st.pot
+	
+Left outer join 
+(
+SELECT 
+max(dealid) as DealID, 
+max(coopid) as Coopid,
+potentialname as DealName
+FROM "views.vtiger_all" as v
+Group By
+Potentialname
+) as vt
+	on Orders.DealID = vt.DealID
+	
+Left Outer join 
+(
+SELECT 
+p.ean, 
+p.farbe, 
+p.groesse,
+p.dealID
+FROM "views.Fabi_PimDataSimpleProductsPublished" as p
+where p.shop = 'DE Windelbar'
+) as pim 
+	on Orders.DealID = pim.Dealid and Orders.EAN = pim.ean
+
+Left Outer join "DWH_Staging_Item.Artikelstammdaten" as a
+	on Orders.EAN = a.EAN
