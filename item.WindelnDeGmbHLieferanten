@@ -1,0 +1,17 @@
+Select 
+Vendor.Kreditor, 
+sum(Vendor.Saldo) as Saldo
+from
+(
+Select 
+dvl.[Initial Entry Global Dim_ 2] as Kostenträger,
+dvl.[Vendor No_] as Kreditor,
+cast(sum(dvl.Amount) * -1 as decimal (18,2)) as Saldo
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Detailed Vendor Ledg_ Entry] as dvl
+where dvl.[Vendor No_] > 71000 --and dvl.[Initial Entry Global Dim_ 2] in ('DE_WIN','CH_WIN', 'DE_WDB')
+Group By 
+dvl.[Vendor No_], 
+dvl.[Initial Entry Global Dim_ 2]
+) as Vendor
+Group By 
+vendor.Kreditor
