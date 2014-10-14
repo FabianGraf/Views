@@ -1,0 +1,99 @@
+with cte1 as (
+Select 
+count(distinct [Sell-to Customer No_]) as AnzahlKunden,
+[Ship-to Address],
+[Ship-to Post Code]
+FROM [Urban_NAV600_SL].[dbo].[Urban-Brand GmbH$Sales Invoice Header] as h with (nolock)
+left join [MAG_BI_Import].[dbo].[mage_customer] c on h.[Sell-to Customer No_] = c.No_ Collate Latin1_General_CI_AS
+where gruppe = 'China'
+Group By
+[Ship-to Address], 
+[Ship-to Post Code]
+--order by 
+--count(distinct [Sell-to Customer No_]) desc
+) 
+, cte2 as
+(Select 
+AnzahlKunden,
+[Ship-to Address], 
+[Ship-to Post Code]
+from cte1
+where AnzahlKunden >= 50 )
+
+
+Select 
+sh.[Posting Date],
+case 
+when sl.No_ = '4008976219620' then '4008976022299'
+when (sl.No_ = '4008976219644' or sl.No_ = '04008976219644') then '4008976022305' 
+when (sl.No_ = '4008976219651' or sl.No_ = '04008976219651') then '4008976022312'
+when sl.No_ = '4008976214984' then '4008976021766'
+when (sl.No_ = '04008976214892' or sl.No_ = '4008976214892') then '4008976021490'
+when sl.No_ = '4008976220121' then '4008976022459'
+when (sl.No_ = '4008976219699' or sl.No_ = '04008976219699') then '4008976022329'
+when sl.No_ = '4008976220138' then '4008976022466'
+when sl.No_ = '4008976219705' then '4008976022336'
+when sl.No_ = '4008976220145' then '4008976022473'
+when sl.No_ = '4008976219712' then '4008976022343'
+when sl.No_ = '4008976220114' then '4008976022442'
+when sl.No_ = '4008976219743' then '4008976022367'
+when (sl.No_ = '4008976219729' or sl.No_ = '04008976219729') then '4008976022350'
+else sl.No_ end as EAN,
+a.Item_Beschreibung_1, 
+case 
+when a.Item_Beschreibung_2 = 'Kinder-Milch 1 plus 300 g 8 St' then 'Kinder-Milch 1 plus 300 g 1 St'
+when a.Item_Beschreibung_2 = 'Kinder-Milch 1 plus 600 g 4 St' then 'Kinder-Milch 1 plus 600 g 1 St'
+when a.Item_Beschreibung_2 = 'Kinder-Milch 2 plus 600 g 4 St' then 'Kinder-Milch 2 plus 600 g 1 St'
+when a.Item_Beschreibung_2 = 'Pre 300 g 8 St.' then 'Pre 300 g 1 St.' 
+when a.Item_Beschreibung_2 = 'Pre 800 g 4 St.' then 'Pre 800 g 1 St.'
+when a.Item_Beschreibung_2 = 'Pronutra 1 1,2 kg 3 St.' then 'Pronutra 1 1,2 kg 1 St.'
+when a.Item_Beschreibung_2 = '1 800 g 4 St.' then 'Pronutra 1 800 g 1 St.'
+when a.Item_Beschreibung_2 = 'Pronutra 1 800 g 4 St.' then 'Pronutra 1 800 g 1 St.'
+when a.Item_Beschreibung_2 = 'Pronutra 2 1,2 kg 3 St.' then 'Pronutra 2 1,2 kg 1 St.'
+when a.Item_Beschreibung_2 = 'Pronutra 2 800 g 4 St.' then 'Pronutra 2 800 g 1 St.'
+when a.Item_Beschreibung_2 = 'Pronutra 3 1,2 kg 3 St.' then 'Pronutra 3 1,2 kg 1 St.'
+when a.Item_Beschreibung_2 = 'Pronutra 3 800 g 4 St.' then 'Pronutra 3 800 g 1 St.'
+when a.Item_Beschreibung_2 = 'Pronutra Pre 1,2kg 3 St.' then 'Pronutra Pre 1,2kg 1 St.'
+when a.Item_Beschreibung_2 = 'Pronutra Pre 300 g 8 St.' then 'Pronutra Pre 300 g 1 St.'
+when a.Item_Beschreibung_2 = 'Pronutra Pre 800 g 4 St.' then 'Pronutra Pre 800 g 1 St.'
+else a.Item_Beschreibung_2 end as Item_Beschreibung_2,
+sh.[Reason Code],
+a.kreditorname,
+case when (cte2.[Ship-to Address] is null and cte2.[Ship-to Post Code] is null) then 'General' else 'China' end as CustomerGroup,
+cast(SUM(sl.Quantity * sl.[Unit Cost]) as int) as Wareneinsatz, 
+case 
+when sl.No_ = '4008976219620' then CAST(sum(sl.Quantity) as int) * 8
+when (sl.No_ = '4008976219644' or sl.No_ = '04008976219644') then CAST(sum(sl.Quantity) as int) * 4 
+when (sl.No_ = '4008976219651' or sl.No_ = '04008976219651') then CAST(sum(sl.Quantity) as int) * 4
+when sl.No_ = '4008976214984' then CAST(sum(sl.Quantity) as int) * 8
+when (sl.No_ = '04008976214892' or sl.No_ = '4008976214892') then CAST(sum(sl.Quantity) as int) * 4
+when sl.No_ = '4008976220121' then CAST(sum(sl.Quantity) as int) * 3
+when (sl.No_ = '4008976219699' or sl.No_ = '04008976219699') then CAST(sum(sl.Quantity) as int) * 4
+when sl.No_ = '4008976220138' then CAST(sum(sl.Quantity) as int) * 3
+when sl.No_ = '4008976219705' then CAST(sum(sl.Quantity) as int) * 4
+when sl.No_ = '4008976220145' then CAST(sum(sl.Quantity) as int) * 3
+when sl.No_ = '4008976219712' then CAST(sum(sl.Quantity) as int) * 4
+when sl.No_ = '4008976220114' then CAST(sum(sl.Quantity) as int) * 3
+when sl.No_ = '4008976219743' then CAST(sum(sl.Quantity) as int) * 8
+when (sl.No_ = '4008976219729' or sl.No_ = '04008976219729') then CAST(sum(sl.Quantity) as int) * 4 
+else CAST(sum(sl.Quantity) as int) end as Absatz, 
+CAST(sum(sl.Quantity) as int) as AbsatzCalc
+
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Invoice Header] as  sh with (nolock)
+inner join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Invoice Line] as sl with (nolock)
+	on sh.No_ = sl.[Document No_]
+Left Outer Join DWH_Staging.item.Artikelstammdaten a
+	on sl.No_ = a.EAN collate Latin1_General_CI_AS
+left outer join cte2
+	on sh.[Ship-to Address] = cte2.[Ship-to Address] and sh.[Ship-to Post Code] = cte2.[Ship-to Post Code]	
+where sh.[Posting Date] >= '2013-01-01' and sh.[Reason Code] in ('WINDELN_DE', 'WINDELN_CH', 'LADEN') and a.Kreditorname like '%Milupa%' and DATEDIFF(mm,sh.[Posting Date],GETDATE()) >= 1
+
+Group By
+sh.[Posting Date],
+sl.No_,
+a.Item_Beschreibung_1,
+a.Item_Beschreibung_2,
+sh.[Reason Code],
+a.kreditorname,
+case when (cte2.[Ship-to Address] is null and cte2.[Ship-to Post Code] is null) then 'General' else 'China' end 
+
