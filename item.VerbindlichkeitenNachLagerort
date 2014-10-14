@@ -1,0 +1,15 @@
+select 
+w.Kreditor, 
+l.[Location Code] as [Location Code],
+case when l.[Location Code] = 'USTER' then isnull((w.Saldo * ae.AnteilSchweiz),0)
+when l.[Location Code] = 'BER_FIEGE' then isnull((w.Saldo * ae.AnteilWindeln),0) 
+when l.[Location Code] = 'WINDELBAR' then isnull((w.Saldo * ae.AnteilWindelbar),0) end as Saldo
+from BI_Data.item.WindelnUndWindelbarKreditoren as w
+cross join 
+(
+SELECT 
+distinct [Location Code]
+FROM [BI_Data].[item].[ILEA_Code_Config] with(NOLOCK)
+) as l
+left outer join BI_Data.item.AnteileEinkaufsvolumenProKreditorNachShop  as ae
+	on w.Kreditor = ae.Kreditor
