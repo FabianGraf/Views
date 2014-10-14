@@ -1,0 +1,247 @@
+SELECT
+      SalesDeal.EAN AS EanDeals,
+      SalesDeal.[Description],
+      SalesDeal.[Description 2],
+      SalesDeal.Marke,
+      SalesDeal.Kreditor,
+      SalesDeal.InSalesLineDeal,
+      SalesDeal.WertInSalesLine,
+      SalesDeal.DealID,
+      --MAX(salesdeal.coopid),
+      salesdeal.potentialname,
+      salesdeal.[account owner],
+      PurchaseDeals.InPurchaseDeals AS NochAusstehendeLiefermengeDeals,
+      PurchaseDeals.Bestellnummer,
+      PurchaseDeals.Bestelldatum,
+      PurchaseDeals.ExpectedReceiptDate,
+      PurchaseDeals.PromisedReceiptDate,
+      SalesOverall.InSalesOverall,
+      PurchaseOverall.InPurchaseOverall,
+      il.Lagerbestand
+
+FROM (SELECT
+
+      sl.No_ AS EAN,
+      i.[Description],
+      i.[Description 2],
+      i.[Attribute 1] AS Marke,
+      i.[Vendor No_] AS Kreditor,
+      SUM(sl.[Outstanding Quantity]) + ISNULL(warten.MengeWartend, 0) + ISNULL(transfertabelle.MengeDL, 0) AS InSalesLineDeal,
+      SUM(sl.Amount) AS WertInSalesLine,
+      dd.[Dimension Value Code] AS DealID,
+      dd.[account owner],
+      dd.UeberID,
+      dd.coopid, 
+      dd.coop_name,
+      dd.potentialname,
+      sl.[Location Code]
+
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Header] sh
+
+INNER JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Line] sl
+      ON sh.No_ = sl.[Document No_]
+
+
+LEFT JOIN (SELECT
+      *
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Document Dimension] AS d
+LEFT JOIN (SELECT
+      Vtig.[Deal Id],
+      vtig.UeberID,
+      Vtig.coopid, 
+      Vtig.coop_name,
+      Vtig.[account owner],
+      vtig.potentialname
+FROM MAG_BI_Import.dbo.vtiger_potential Vtig)
+AS Vtiger
+
+      ON d.[Dimension Value Code] = Vtiger.[Deal Id] COLLATE Latin1_General_100_CS_AS
+
+WHERE d.[Table ID] = 37 AND d.[Dimension Code] = 'DEAL')
+AS dd
+      ON dd.[Document No_] = sl.[Document No_] AND dd.[Line No_] = sl.[Line No_]
+
+LEFT JOIN (SELECT
+      CAST(esh.[Order Date] AS date) AS OrderDateESH,
+      esh.[Sales Document No_],
+      esh.[No_] AS SVKA,
+      esl.[No_] AS EAN_ESL,
+      SUM(esl.Quantity) AS MengeWartend,
+      esl.[Dimension Value 2] AS DealID,
+      esl.[Shop Code] AS ShopCode
+
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesHeader] esh
+INNER JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesLine] esl
+      ON esl.[Document No_] = esh.No_
+WHERE esh.[Status] = 0 AND esl.[Shop Code] = 'WINDELBAR'
+
+GROUP BY    CAST(esh.[Order Date] AS date),
+                  esh.[Sales Document No_],
+                  esh.[No_],
+                  esl.No_,
+                  esl.[Dimension Value 2],
+                  esl.[Shop Code])
+AS Warten
+      ON warten.EAN_ESL = sl.No_ AND warten.DealID = dd.[Dimension Value Code]
+
+
+LEFT JOIN (SELECT
+      CAST(dh.OrderDate AS date) AS OrderDateDH,
+      dl.Identifier AS EeanDL,
+      SUM(dl.quantity) AS MengeDL,
+      dl.DimensionValueNo2 AS DealIdDl
+
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$CreateDocumentHeader] AS dh
+INNER JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$CreateDocumentLine] AS dl
+      ON dl.[Entry No_] = dh.[Entry No_]
+
+LEFT OUTER JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$CreateDocumentResponse] AS sr
+      ON sr.[Entry No_] = dh.[Entry No_]
+
+WHERE sr.[Entry No_] IS NULL AND dh.Completed = 1 AND dh.[Shop Code] = 'WINDELBAR'
+
+GROUP BY    CAST(dh.OrderDate AS date),
+                  dl.Identifier,
+                  dl.DimensionValueNo2)
+AS TransferTabelle
+      ON TransferTabelle.EeanDL = sl.No_ AND TransferTabelle.DealIdDl = dd.[Dimension Value Code]
+
+
+
+LEFT JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Item] AS i
+      ON i.No_ = sl.[No_]
+
+WHERE sh."Reason Code" = 'WINDELBAR' AND sh."Document Type" = 1 AND dd.[Dimension Value Code] IS NOT NULL
+
+GROUP BY    sl.No_,
+                  i.[Description],
+                  i.[Description 2],
+                  i.[Attribute 1],
+                  i.[Vendor No_],
+                  warten.MengeWartend,
+                  transfertabelle.MengeDL,
+                  sl.[Location Code],
+                  dd.[Dimension Value Code],
+                  dd.[account owner],
+                  dd.UeberID,
+                  dd.coopid, 
+                  dd.coop_name,
+                  dd.potentialname)
+SalesDeal
+
+LEFT JOIN (SELECT
+      CAST(ph.[Order Date] AS date) AS Bestelldatum,
+      CAST(ph.[Expected Receipt Date] AS date) AS ExpectedReceiptDate,
+      CAST(ph.[Promised Receipt Date] AS date) AS PromisedReceiptDate,
+      ph.[No_] AS Bestellnummer,
+      pl.[No_] AS EAN,
+      i.[Description],
+      i.[Description 2],
+      i.[Attribute 1] AS Marke,
+      i.[Vendor No_] AS Kreditor,
+      SUM(pl.[Outstanding Quantity]) * pl.[Qty_ per Unit of Measure] AS InPurchaseDeals,
+      SUM(pl.[Outstanding Quantity]) * i.[Unit Cost] AS WertInPurchaseDeals,
+      dd.[Dimension Value Code] AS DealID,
+      pl.[Location Code]
+
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Purchase Header] AS ph
+
+INNER JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Purchase Line] AS pl
+      ON pl.[Document No_] = ph.[No_]
+
+LEFT JOIN (SELECT
+      *
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Document Dimension] d
+WHERE d.[Table ID] = 39 AND d.[Dimension Code] = 'DEAL')
+AS dd
+      ON dd.[Document No_] = pl.[Document No_] AND dd.[Line No_] = pl.[Line No_]
+
+
+LEFT JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Item] AS i
+      ON i.No_ = pl.[No_]
+
+WHERE ph.[Location Code] = 'WINDELBAR' AND ph.[Document Type] = 1
+
+GROUP BY    ph.[Order Date],
+                  ph.[Expected Receipt Date],
+                  ph.[Promised Receipt Date],
+                  ph.[No_],
+                  pl.No_,
+                  i.[Description],
+                  i.[Description 2],
+                  i.[Attribute 1],
+                  i.[Vendor No_],
+                  pl.[Qty_ per Unit of Measure],
+                  i.[Unit Cost],
+                  dd.[Dimension Value Code],
+                  pl.[Location Code])
+PurchaseDeals
+
+on SalesDeal.coopid = PurchaseDeals.DealID and SalesDeal.EAN = PurchaseDeals.EAN
+
+LEFT JOIN (SELECT
+      sl1.No_ AS OverallInSalesEan,
+      SUM(sl1.[Outstanding Quantity]) AS InSalesOverall
+
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Header] sh1
+
+INNER JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Line] sl1
+      ON sh1.No_ = sl1.[Document No_]
+
+WHERE sh1.[Document Type] = 1 AND sh1.[Location Code] = 'WINDELBAR'
+
+GROUP BY sl1.No_)
+SalesOverall
+      ON SalesOverall.OverallInSalesEan = SalesDeal.EAN
+
+
+LEFT JOIN (SELECT
+      pl1.No_,
+      SUM(pl1.[Outstanding Quantity]) * pl1.[Qty_ per Unit of Measure] AS InPurchaseOverall
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Purchase Header] AS ph1
+
+INNER JOIN Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Purchase Line] AS pl1
+      ON pl1.[Document No_] = ph1.[No_]
+
+LEFT JOIN (SELECT
+      *
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Document Dimension] d
+WHERE d.[Table ID] = 39 AND d.[Dimension Code] = 'DEAL')
+AS dd
+      ON dd.[Document No_] = pl1.[Document No_] AND dd.[Line No_] = pl1.[Line No_]
+
+WHERE ph1.[Location Code] = 'WINDELBAR' AND ph1.[Document Type] = 1
+
+GROUP BY    pl1.No_,
+                  pl1.[Qty_ per Unit of Measure])
+PurchaseOverall
+      ON PurchaseOverall.No_ = salesdeal.EAN
+
+LEFT JOIN (SELECT
+      ile.[Item No_],
+      SUM(ile.Quantity) AS Lagerbestand
+FROM Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Item Ledger Entry] ile
+WHERE ile.[Location Code] = 'WINDELBAR'
+GROUP BY ile.[Item No_])
+il
+      ON SalesDeal.EAN = il.[Item No_]
+
+GROUP BY 
+      SalesDeal.EAN,
+      SalesDeal.[Description],
+      SalesDeal.[Description 2],
+      SalesDeal.Marke,
+      SalesDeal.Kreditor,
+      SalesDeal.InSalesLineDeal,
+      SalesDeal.WertInSalesLine,
+      SalesDeal.DealID,
+      salesdeal.potentialname,
+      salesdeal.[account owner],
+      PurchaseDeals.InPurchaseDeals,
+      PurchaseDeals.Bestellnummer,
+      PurchaseDeals.Bestelldatum,
+      PurchaseDeals.ExpectedReceiptDate,
+      PurchaseDeals.PromisedReceiptDate,
+      SalesOverall.InSalesOverall,
+      PurchaseOverall.InPurchaseOverall,
+      il.Lagerbestand
