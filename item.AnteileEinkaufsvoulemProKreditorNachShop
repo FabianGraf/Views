@@ -1,0 +1,27 @@
+Select * 
+from
+(
+Select
+Einkauf.Kreditor, 
+sum(Einkauf.EinkaufGesamt) as Gesamt, 
+cast(sum(Einkauf.EinkaufWindelbar) / sum(Einkauf.EinkaufGesamt) as numeric (10,2)) as AnteilWindelbar, 
+cast(sum(Einkauf.EinkaufWindeln) / sum(Einkauf.EinkaufGesamt) as decimal (10,2)) as AnteilWindeln, 
+cast(sum(Einkauf.EinkaufUster) / sum(Einkauf.EinkaufGesamt) as decimal (10,2)) as AnteilSchweiz
+from
+(
+select
+pl.[Buy-from Vendor No_] as Kreditor,
+cast(pl.Amount as decimal (18,2)) as EinkaufGesamt, 
+cast(isnull(case when pl.[Location Code] = 'BER_FIEGE' then pl.Amount end,0) as decimal (18,2)) as EinkaufWindeln,
+cast(isnull(case when pl.[Location Code] = 'WINDELBAR' then pl.Amount end,0) as decimal (18,2)) as EinkaufWindelbar, 
+cast(isnull(case when pl.[Location Code] = 'USTER' then pl.Amount end,0) as decimal (18,2)) as EinkaufUster
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Purch_ Inv_ Header] as ph 
+inner join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Purch_ Inv_ Line] as pl 
+	on ph.No_ = pl.[Document No_]
+where pl.[Location Code] in ('BER_FIEGE','WINDELBAR','USTER') and pl.[Buy-from Vendor No_] > 71000 and DATEDIFF(dd,ph.[Posting Date], getdate()) <= 180 and pl.Amount > 0
+) Einkauf
+Group By
+Einkauf.Kreditor
+--having
+--sum(Einkauf.EinkaufGesamt) > 0
+) agg
