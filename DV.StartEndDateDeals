@@ -1,0 +1,7 @@
+select
+"_id" as pot,
+"brand",
+cast(from_unixtime( cast ( cast( "start" as long) / 1000 as integer) ) as date) as
+"startdate",
+cast(from_unixtime( cast ( cast( "end" as long) / 1000 as integer) ) as date) as "enddate"
+from mongodb.deal
