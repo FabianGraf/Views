@@ -1,0 +1,82 @@
+with inSystem as 
+( 
+select 
+h.[External Document No_]
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Header] h with (nolock) 
+union 
+select 
+sih.[External Document No_]
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Invoice Header] sih
+)
+
+Select
+ebay.[External Document No_], 
+ebay.[Shop Code],
+ebay.OrderDate as OrderDate,
+ebay.Quantity as QuantityEbayTabellen,
+isnull(offen.OutstandingQuantity,0) as OutstandingQuantity, 
+isnull(stornierung.MengeStornierung,0) as MengeStornierung,
+ebay.OI_Gross as OrderIntakeEbayTabellen, 
+isnull(offen.OutstandingRevenue,0) as OutstandingRevenue, 
+isnull(stornierung.WertStorinierung,0) as WertStorinierung,
+offen.Auftragstyp as GrundFuerAusstehendenAuftrag
+
+from 
+
+(
+select
+cast(esh.[Order Date] as Date) as OrderDate, 
+esh.[Shop Code], 
+esh.[External Document No_], 
+cast(SUM(esl.[Quantity]) as int) as Quantity, 
+cast(SUM(esl.Quantity * esl.[Unit Price]) as decimal (18,2)) as OI_Gross
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesHeader] esh with (nolock)
+	inner join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesLine] esl with (nolock)
+		on esh.No_ = esl.[Document No_]
+where DATEDIFF(dd,esh.[Order Date],GETDATE()) <= 180 and esh.[Shop Code] = 'WINDELN_DE' and  esl.No_ not in( select No_ from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Resource])
+Group BY 
+cast(esh.[Order Date] as Date), 
+esh.[Shop Code], 
+esh.[External Document No_]
+) as ebay 
+	
+	
+LEFT OUTER JOIN 
+--OffeneAuftraege
+(
+Select 
+distinct sh.[External Document No_], 
+sh.[Reason Code],
+case when (sh.[Document Type] = 1 and sh.Status = 1) then 'Wartet auf Ware' when (sh.[Document Type] = 1 and sh.Status = 0) then 'Wartet auf Zahlung' else 'Auftrag bei Logistik' end as Auftragstyp,
+cast(sum(sl.[Outstanding Quantity]) as int) as OutstandingQuantity, 
+cast(sum(sl.[Outstanding Quantity] * sl.[Unit Price]) as decimal (18,2)) as OutstandingRevenue
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Header] as sh with (nolock) 
+	inner join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Line] as sl with (nolock) 
+		on sh.No_ = sl.[Document No_]
+where sh.[Reason Code] = 'WINDELN_DE'
+Group by
+sh.[External Document No_],  
+sh.[Reason Code], 
+case when (sh.[Document Type] = 1 and sh.Status = 1) then 'Wartet auf Ware' when (sh.[Document Type] = 1 and sh.Status = 0) then 'Wartet auf Zahlung' else 'Auftrag bei Logistik' end
+ ) offen
+	on ebay.[External Document No_] = offen.[External Document No_]
+	
+LEFT OUTER JOIN
+--Stornierungen
+(
+Select 
+distinct esh.[External Document No_], 
+esh.[Shop Code], 
+cast(sum(esl.Quantity * esl.[Unit Price Gross Amount]) as decimal (18,2)) as WertStorinierung, 
+cast(SUM(esl.Quantity) as int) as MengeStornierung
+From Urban_NAV600_SL.[dbo].[Urban-Brand GmbH$eBayNavCSalesHeader] as esh with (nolock)
+Left Join inSystem
+on esh.[External Document No_] = inSystem.[External Document No_]
+Left join Urban_NAV600_SL.[dbo].[Urban-Brand GmbH$eBayNavCSalesLine] as esl with (nolock)
+on esh.No_ = esl.[Document No_]
+Where inSystem.[External Document No_] IS NULL AND DATEDIFF(DD,esh.[Order Date],GETDATE()) <= 180 and esh.[Shop Code] = 'WINDELN_DE'
+group by 
+esh.[Shop Code], 
+esh.[External Document No_]
+) as Stornierung 
+	on ebay.[External Document No_] = Stornierung.[External Document No_]
