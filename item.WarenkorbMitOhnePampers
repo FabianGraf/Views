@@ -1,0 +1,59 @@
+Select 
+alle.Buchungsdatum,
+alle.ExterneBelegnummer,
+case 
+when (z.ZeilenAnzahl = 1 and pa.Marke = 'Pampers') then 'ReinePampersBestellung' 
+when (z.ZeilenAnzahl > 1 and pa.Marke = 'Pampers') then 'PampersMischwarenkorb' 
+when pa.Marke is null then 'KeinePamapersImWarenkorb' end as Warenkorbart,
+alle.UmsatzOhneUSt
+
+from 
+(
+Select
+Max(ve.[Posting Date]) as Buchungsdatum,
+ve.[External Document No_] as ExterneBelegnummer,
+cast(sum(ve.[Sales Amount (Actual)]) as decimal (10,2)) as UmsatzOhneUSt
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Value Entry] as ve with (nolock)
+where ve.[Document Type] = 2 and ve.[Global Dimension 2 Code] = 'DE_WIN' and cast(ve.[Posting Date] as date) >= '2010-01-01' and ve.[Source No_] not in ('D1173541','D1164626','D1563736','D1434457','D1481174','D1364500','D1258744','D1263258')
+Group By
+ve.[External Document No_]
+) as alle
+
+left outer join 
+(
+Select
+max(zeilen.ZeilenZahl) as ZeilenAnzahl,
+zeilen.ExterneBelegnummer
+from
+(
+Select 
+ve.[External Document No_] as ExterneBelegnummer,
+a.Marke,
+ROW_NUMBER() OVER(PARTITION BY ve.[External Document No_] ORDER BY a.Marke) as ZeilenZahl
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Value Entry] as ve with (nolock)
+left outer join DWH_Staging.item.Artikelstammdaten as a with (nolock)
+	on ve.[Item No_] = a.EAN collate Latin1_General_CI_AS
+where ve.[Document Type] = 2 and cast(ve.[Posting Date] as date) >= '2010-01-01' and ve.[Source No_] not in ('D1173541','D1164626','D1563736','D1434457','D1481174','D1364500','D1258744','D1263258')
+Group by
+ve.[External Document No_], 
+a.Marke
+) as zeilen
+Group by
+zeilen.ExterneBelegnummer
+) as z
+	on alle.ExterneBelegnummer = z.ExterneBelegnummer
+	
+Left outer join 
+(
+Select 
+ve.[External Document No_] as ExterneBelegnummer,
+a.Marke
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Value Entry] as ve with (nolock)
+left outer join DWH_Staging.item.Artikelstammdaten as a with (nolock)
+	on ve.[Item No_] = a.EAN collate Latin1_General_CI_AS
+where ve.[Document Type] = 2 and a.Marke = 'Pampers' and cast(ve.[Posting Date] as date) >= '2010-01-01' and ve.[Source No_] not in ('D1173541','D1164626','D1563736','D1434457','D1481174','D1364500','D1258744','D1263258')
+Group by 
+ve.[External Document No_],
+a.marke
+) as pa
+	on alle.ExterneBelegnummer = pa.ExterneBelegnummer
