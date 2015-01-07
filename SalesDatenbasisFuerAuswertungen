@@ -1,0 +1,51 @@
+select 
+s.*,
+erst.DatumErstbestellung,
+erst.AnzahlBestellungen as AnzahlBestellungenKunde,
+hi.Länderkürzel,
+hi.Postleitzahl,
+hi.Stadt,
+hi.Umrechnungskurs,
+hi.Zahlungsart,
+m.first_name as Vorname,
+m.last_name as Nachname,
+m.email as Email,
+m.gruppe as Kundengruppe,
+m.countryCode as WohnsitzLänderkürzel,
+m.alter_kind as Kindesalter,
+auftragsstatus.AuftragsstatusGesamt
+
+from BI_Data.item.Sales as s
+
+left outer join BI_Data.item.HeaderInfosSalesView as hi
+	on s.ExterneBelegnummer = hi.ExterneBelegnummer and s.Belegnummer = hi.Belegnummer
+
+left outer join MAG_BI_Import.dbo.mage_customer as m 
+	on s.Debitor = m.No_ collate Latin1_General_CI_AS
+
+left outer join 
+(
+select
+cast(min(esh.[Order Date]) as date) as DatumErstbestellung,
+COUNT(distinct esh.[External Document No_]) as AnzahlBestellungen,
+ea.[Customer No_] as [Sell-to Customer No_]
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesHeader] as esh with (nolock)
+left join Urban_NAV600_Sl.dbo.[Urban-Brand GmbH$eBayNavCAccount] as ea with (nolock) 
+	on esh.[Sell-to Account No_] = ea.No_
+Group By 
+ea.[Customer No_]
+) as erst
+	on s.Debitor = erst.[Sell-to Customer No_]
+
+left outer join
+(
+select
+esh.[External Document No_] as ExterneBelegnummer, 
+case when (ROW_NUMBER() OVER(PARTITION BY [Sell-to Account No_]  ORDER BY esh.[Order Date])) = 1 then 'Neubestellung' else 'Wiederkauf' end as AuftragsstatusGesamt
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesHeader] as esh with (nolock)
+group by 
+esh.[External Document No_], 
+[Sell-to Account No_],
+esh.[Order Date]
+) as auftragsstatus 
+	on s.ExterneBelegnummer = auftragsstatus.ExterneBelegnummer
