@@ -1,4 +1,3 @@
-
 Select 
 cast(ve.[Item No_] as varchar (23)) as EAN,
 cast(a.Item_Beschreibung_1 as varchar (23)) as ItemBeschreibung1,
@@ -14,6 +13,7 @@ cast(ve.[Posting Date] as date) as Verkaufsdatum,
 cast(ve.[Location Code] as varchar (23)) as Lagerort,
 cast(ve.[Reason Code] as varchar (23)) as Shop, 
 cast(ve.[Global Dimension 2 Code] as varchar (23)) as Kostenträger,
+CAST(ve.[Global Dimension 1 Code] as varchar (23)) as Kostenstelle,
 cast(ve.[External Document No_] as varchar (23)) as ExterneBelegnummer,
 cast(isnull(case when ve.[Document Type] = 2 and a.Kreditor = '71009' then cast(sum(ve.[Cost Posted to G_L]) * -1 as decimal (10,2)) * 0.097 
 when ve.[Document Type] = 2 and a.Kreditor = '71990' then cast(sum(ve.[Cost Posted to G_L]) * -1 as decimal (10,2)) * 0.097
@@ -48,19 +48,19 @@ cast(sum(ve.[Cost Posted to G_L]) * -1 as decimal (10,2)) as Wareneinsatz
 from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Value Entry] as ve with (nolock)
 
 left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Return Reason] as rr
-	on ve.[Return Reason Code] = rr.Code
+      on ve.[Return Reason Code] = rr.Code
 
 left outer join Urban_NAV600_SL.[dbo].[Urban-Brand GmbH$Posted Document Dimension] AS [PDD] with(NOLOCK) 
-	ON ve.[Document No_] = [PDD].[Document No_] AND ve.[Document Line No_] = [PDD].[Line No_] and pdd.[Table ID] in (113,115) and pdd.[Dimension Code]='KATEGORIE'
+      ON ve.[Document No_] = [PDD].[Document No_] AND ve.[Document Line No_] = [PDD].[Line No_] and pdd.[Table ID] in (113,115) and pdd.[Dimension Code]='KATEGORIE'
 
 left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Dimension Value] AS dv With(NOLOCK) 
-	ON pdd.[Dimension Value Code] = dv.Code AND dv.[Dimension Code] = 'KATEGORIE'
+      ON pdd.[Dimension Value Code] = dv.Code AND dv.[Dimension Code] = 'KATEGORIE'
 
 left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Dimension Value] AS dv2 With(NOLOCK) 
-	ON SUBSTRING(pdd.[Dimension Value Code], 1, 1) + '00' = dv2.Code AND dv2.[Dimension Code] = 'KATEGORIE' 
+      ON SUBSTRING(pdd.[Dimension Value Code], 1, 1) + '00' = dv2.Code AND dv2.[Dimension Code] = 'KATEGORIE' 
 
 left outer join DWH_Staging.item.Artikelstammdaten as a with (nolock)
-	on ve.[Item No_] = a.EAN collate Latin1_General_CI_AS
+      on ve.[Item No_] = a.EAN collate Latin1_General_CI_AS
 
 where ve.[Document Type] in (2,4) and cast(ve.[Posting Date] as date) >= '2010-01-01' and ve.[Source No_] not in ('D1173541','D1164626','D1563736','D1434457','D1481174','D1364500','D1258744','D1263258')
 
@@ -80,6 +80,7 @@ ve.[Posting Date],
 ve.[Location Code],
 ve.[Reason Code],
 ve.[Global Dimension 2 Code],
+ve.[Global Dimension 1 Code],
 ve.[External Document No_],
 ve.[Document Type],
 rr.[Description]
@@ -101,6 +102,7 @@ cast(rle.[Posting Date] as date) as Verkaufsdatum,
 cast(null as varchar (23)) as Lagerort,
 cast(rle.[Reason Code] as varchar (23)) as Shop,
 cast(rle.[Global Dimension 2 Code] as varchar (23)) as Kostenträger,
+cast(rle.[Global Dimension 1 Code] as varchar (23)) as Kostenstelle,
 cast(rle.[External Document No_] as varchar (23)) as ExterneBelegnummer,
 cast(0 as decimal (10,2)) as WKZ,
 cast(case when rle.[Document No_] like 'VKR%' then 'Verkauf' when rle.[Document No_] like 'VGS%' then 'Retoure' end as varchar (23)) as Buchungsart,
@@ -111,16 +113,16 @@ cast(0 as decimal (10,2)) as Wareneinsatz
 from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Res_ Ledger Entry] as rle with (nolock)
 
 inner join  Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Resource] as r with (nolock)
-	on rle.[Resource No_] = r.No_
+      on rle.[Resource No_] = r.No_
 
 left outer join [Urban_NAV600_SL].[dbo].[Urban-Brand GmbH$Ledger Entry Dimension] as pdd  with (nolock)
-	on rle.[Entry No_] = pdd.[Entry No_] and pdd.[Table ID] = '203' and pdd.[Dimension Code] = 'KATEGORIE'
+      on rle.[Entry No_] = pdd.[Entry No_] and pdd.[Table ID] = '203' and pdd.[Dimension Code] = 'KATEGORIE'
 
 left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Dimension Value] AS dv With(NOLOCK) 
-	ON pdd.[Dimension Value Code] = dv.Code AND dv.[Dimension Code] = 'KATEGORIE'
+      ON pdd.[Dimension Value Code] = dv.Code AND dv.[Dimension Code] = 'KATEGORIE'
 
 left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Dimension Value] AS dv2 With(NOLOCK) 
-	ON SUBSTRING(pdd.[Dimension Value Code], 1, 1) + '00' = dv2.Code AND dv2.[Dimension Code] = 'KATEGORIE' 
+      ON SUBSTRING(pdd.[Dimension Value Code], 1, 1) + '00' = dv2.Code AND dv2.[Dimension Code] = 'KATEGORIE' 
 
 where rle.[Posting Date] >= '2010-01-01' and rle.[Source No_] not in ('D1173541','D1164626','D1563736','D1434457','D1481174','D1364500','D1258744','D1263258')
 
@@ -135,4 +137,5 @@ rle.[Document No_],
 rle.[Posting Date],
 rle.[Reason Code],
 rle.[Global Dimension 2 Code],
+rle.[Global Dimension 1 Code],
 rle.[External Document No_]
