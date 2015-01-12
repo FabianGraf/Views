@@ -59,8 +59,21 @@ left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Dimension Value] AS dv Wit
 left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Dimension Value] AS dv2 With(NOLOCK) 
       ON SUBSTRING(pdd.[Dimension Value Code], 1, 1) + '00' = dv2.Code AND dv2.[Dimension Code] = 'KATEGORIE' 
 
-left outer join DWH_Staging.item.Artikelstammdaten as a with (nolock)
-      on ve.[Item No_] = a.EAN collate Latin1_General_CI_AS
+left outer join DWH_Staging.item.Artikelstammdaten2_0 as a with (nolock)
+      on ve.[Item No_] = a.EAN collate Latin1_General_CI_AS and 
+	case 
+	when ve.[Location Code] like '%FIEGE%' then 'BER_FIEGE' 
+	when ve.[Location Code] like '%KAMINO%' then 'BER_FIEGE'
+	when ve.[Location Code] like '%LADEN_GRUE%' then 'BER_FIEGE'
+	when ve.[Location Code] like '%GROUP7%' then 'BER_FIEGE' 
+	when ve.[Location Code] like '%MUSTER%' then 'BER_FIEGE'
+	when ve.[Location Code] like '%SCHWEIZ%' then 'USTER'
+	when ve.[Location Code] like '%TRANS_01%' then 'BER_FIEGE'
+	when ve.[Location Code] like '%USTER%' then 'USTER'
+	when ve.[Location Code] like '%WB%' then 'WINDELBAR'
+	when ve.[Location Code] like '%WUNDERLAND%' then 'WINDELBAR'
+	else ve.[Location Code] end = a.Lagerort collate Latin1_General_CI_AS
+      
 
 where ve.[Document Type] in (2,4) and cast(ve.[Posting Date] as date) >= '2010-01-01' and ve.[Source No_] not in ('D1173541','D1164626','D1563736','D1434457','D1481174','D1364500','D1258744','D1263258')
 
