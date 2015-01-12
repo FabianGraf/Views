@@ -1,0 +1,128 @@
+Select 
+cast(ve.[Item No_] as varchar (23)) as EAN,
+cast(a.Item_Beschreibung_1 as varchar (23)) as ItemBeschreibung1,
+cast(a.Item_Beschreibung_2 as varchar (23)) as ItemBeschreibung2,
+cast(a.Kreditorname as varchar (23)) as Kreditorname,
+cast(a.Kreditor as varchar (23)) as Kreditornummer,
+cast(a.Marke as varchar (23)) as Marke,
+cast(dv2.Name as varchar(23)) as Hauptkategorie,
+cast(dv.Name as varchar(30)) as Unterkategorie,
+cast(ve.[Source No_] as varchar (23)) as Debitor,
+cast(ve.[Document No_] as varchar (23)) as Belegnummer,
+cast(ve.[Posting Date] as date) as Verkaufsdatum,
+cast(ve.[Location Code] as varchar (23)) as Lagerort,
+cast(ve.[Reason Code] as varchar (23)) as Shop, 
+cast(ve.[Global Dimension 2 Code] as varchar (23)) as Kostenträger,
+CAST(ve.[Global Dimension 1 Code] as varchar (23)) as Kostenstelle,
+cast(ve.[External Document No_] as varchar (23)) as ExterneBelegnummer,
+cast(case when ve.[Document Type] = 2 then 'Verkauf' when ve.[Document Type] = 4 then 'Retoure' end as varchar (23)) as Buchungsart,
+cast(rr.[Description] as varchar (23)) as Retourengrund,
+cast(sum(ve.[Invoiced Quantity]) * -1 as bigint) as Absatz,
+cast(sum(ve.[Sales Amount (Actual)]) as decimal (10,2)) as UmsatzOhneUSt,
+cast(sum(ve.[Cost Posted to G_L]) * -1 as decimal (10,2)) as Wareneinsatz
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Value Entry] as ve with (nolock)
+
+left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Return Reason] as rr
+      on ve.[Return Reason Code] = rr.Code
+
+left outer join Urban_NAV600_SL.[dbo].[Urban-Brand GmbH$Posted Document Dimension] AS [PDD] with(NOLOCK) 
+      ON ve.[Document No_] = [PDD].[Document No_] AND ve.[Document Line No_] = [PDD].[Line No_] and pdd.[Table ID] in (113,115) and pdd.[Dimension Code]='KATEGORIE'
+
+left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Dimension Value] AS dv With(NOLOCK) 
+      ON pdd.[Dimension Value Code] = dv.Code AND dv.[Dimension Code] = 'KATEGORIE'
+
+left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Dimension Value] AS dv2 With(NOLOCK) 
+      ON SUBSTRING(pdd.[Dimension Value Code], 1, 1) + '00' = dv2.Code AND dv2.[Dimension Code] = 'KATEGORIE' 
+
+left outer join DWH_Staging.item.Artikelstammdaten2_0 as a with (nolock)
+      on ve.[Item No_] = a.EAN collate Latin1_General_CI_AS and 
+	case 
+	when ve.[Location Code] like '%FIEGE%' then 'BER_FIEGE' 
+	when ve.[Location Code] like '%KAMINO%' then 'BER_FIEGE'
+	when ve.[Location Code] like '%LADEN_GRUE%' then 'BER_FIEGE'
+	when ve.[Location Code] like '%GROUP7%' then 'BER_FIEGE' 
+	when ve.[Location Code] like '%MUSTER%' then 'BER_FIEGE'
+	when ve.[Location Code] like '%SCHWEIZ%' then 'USTER'
+	when ve.[Location Code] like '%TRANS_01%' then 'BER_FIEGE'
+	when ve.[Location Code] like '%USTER%' then 'USTER'
+	when ve.[Location Code] like '%WB%' then 'WINDELBAR'
+	when ve.[Location Code] like '%WUNDERLAND%' then 'WINDELBAR'
+	else ve.[Location Code] end = a.Lagerort collate Latin1_General_CI_AS
+      
+
+where ve.[Document Type] in (2,4) and cast(ve.[Posting Date] as date) >= '2010-01-01' and ve.[Source No_] not in ('D1173541','D1164626','D1563736','D1434457','D1481174','D1364500','D1258744','D1263258')
+
+
+Group By
+ve.[Item No_],
+a.Item_Beschreibung_1,
+a.Item_Beschreibung_2,
+a.Kreditorname,
+a.Kreditor,
+a.Marke,
+dv2.Name,
+dv.Name,
+ve.[Source No_],
+ve.[Document No_],
+ve.[Posting Date],
+ve.[Location Code],
+ve.[Reason Code],
+ve.[Global Dimension 2 Code],
+ve.[Global Dimension 1 Code],
+ve.[External Document No_],
+ve.[Document Type],
+rr.[Description]
+
+union all
+
+select 
+cast(rle.[Resource No_] as varchar (23)) as EAN,
+cast(r.Name as varchar (23)) collate Latin1_General_100_CS_AS as ItemBeschreibung1,
+cast(null as varchar (23)) collate Latin1_General_100_CS_AS as ItemBeschreibung2,
+cast(null as varchar (23)) collate Latin1_General_100_CS_AS as Kreditorname,
+cast(null as varchar (23)) collate Latin1_General_100_CS_AS as Kreditornummer,
+cast(null as varchar (23)) collate Latin1_General_100_CS_AS as Marke,
+cast(dv2.Name as varchar(23)) as Hauptkategorie,
+cast(dv.Name as varchar(30)) as Unterkategorie,
+cast(rle.[Source No_] as varchar (23)) as Debitor,
+cast(rle.[Document No_] as varchar (23)) as Belegnummer,
+cast(rle.[Posting Date] as date) as Verkaufsdatum,
+cast(null as varchar (23)) as Lagerort,
+cast(rle.[Reason Code] as varchar (23)) as Shop,
+cast(rle.[Global Dimension 2 Code] as varchar (23)) as Kostenträger,
+cast(rle.[Global Dimension 1 Code] as varchar (23)) as Kostenstelle,
+cast(rle.[External Document No_] as varchar (23)) as ExterneBelegnummer,
+cast(case when rle.[Document No_] like 'VKR%' then 'Verkauf' when rle.[Document No_] like 'VGS%' then 'Retoure' end as varchar (23)) as Buchungsart,
+cast(null as varchar (23)) as Retourengrund,
+cast(sum(rle.Quantity) * -1 as bigint) as Absatz,
+cast(sum(rle.[Total Price]) * -1 as decimal (10,2)) as UmsatzOhneUSt,
+cast(0 as decimal (10,2)) as Wareneinsatz
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Res_ Ledger Entry] as rle with (nolock)
+
+inner join  Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Resource] as r with (nolock)
+      on rle.[Resource No_] = r.No_
+
+left outer join [Urban_NAV600_SL].[dbo].[Urban-Brand GmbH$Ledger Entry Dimension] as pdd  with (nolock)
+      on rle.[Entry No_] = pdd.[Entry No_] and pdd.[Table ID] = '203' and pdd.[Dimension Code] = 'KATEGORIE'
+
+left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Dimension Value] AS dv With(NOLOCK) 
+      ON pdd.[Dimension Value Code] = dv.Code AND dv.[Dimension Code] = 'KATEGORIE'
+
+left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Dimension Value] AS dv2 With(NOLOCK) 
+      ON SUBSTRING(pdd.[Dimension Value Code], 1, 1) + '00' = dv2.Code AND dv2.[Dimension Code] = 'KATEGORIE' 
+
+where rle.[Posting Date] >= '2010-01-01' and rle.[Source No_] not in ('D1173541','D1164626','D1563736','D1434457','D1481174','D1364500','D1258744','D1263258')
+
+Group by
+rle.[Resource No_],
+r.Name,
+r.[Gen_ Prod_ Posting Group],
+dv.Name, 
+dv2.Name,
+rle.[Source No_],
+rle.[Document No_],
+rle.[Posting Date],
+rle.[Reason Code],
+rle.[Global Dimension 2 Code],
+rle.[Global Dimension 1 Code],
+rle.[External Document No_]
