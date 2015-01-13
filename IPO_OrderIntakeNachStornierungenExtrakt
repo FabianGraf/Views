@@ -1,8 +1,25 @@
 Select 
-o.*, 
+o.EAN, 
+o.[External Document No_], 
+o.Item_Beschreibung_1,
+o.Item_Beschreibung_2, 
+o.Kategorie_kurz, 
+o.Kategorie_lang, 
+o.Kreditor, 
+o.Kreditorname, 
+o.Kundengruppe, 
+o.LagerortspezifischerEinstandspreis,
+o.Marke, 
+o.OrderDate, 
+case when o.[Shop Code] = 'WINDELN_CH' then o.OrderIntakeIncVAT / p.[Exchange Rate Amount] else o.OrderIntakeIncVAT end as OrderIntakeIncVAT, 
+o.OrderIntakeIncVAT as OrderIntakeIncVATInlokalerWaehrung,
+o.OrderQuantity, 
+o.SellToAccountNo, 
+o.[Shop Code],
 auftragsstatus.AuftragsstatusGesamt, 
 erst.AnzahlBestellungen as AnzahlBestellungenKunde, 
-erst.DatumErstbestellung 
+erst.DatumErstbestellung,
+p.[Exchange Rate Amount]
 
 from BI_Data.item.OrderIntakeNachStornierungenOhneShipping as o 
 
@@ -30,3 +47,8 @@ Group By
 esh.[Sell-to Account No_]
 ) as erst
 	on o.SellToAccountNo = erst.[Sell-to Account No_]
+	
+cross apply
+   (select top(1) c.[Exchange Rate Amount]
+    from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Currency Exchange Rate] as c
+    where c.[Currency Code] = 'CHF'and  c.[Starting Date] <= o.OrderDate ORDER BY c.[Starting Date] DESC) p
