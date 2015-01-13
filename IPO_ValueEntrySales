@@ -19,11 +19,24 @@ cast(case when ve.[Document Type] = 2 then 'Verkauf' when ve.[Document Type] = 4
 cast(rr.[Description] as varchar (23)) as Retourengrund,
 cast(sum(ve.[Invoiced Quantity]) * -1 as bigint) as Absatz,
 cast(sum(ve.[Sales Amount (Actual)]) as decimal (10,2)) as UmsatzOhneUSt,
-cast(sum(ve.[Cost Posted to G_L]) * -1 as decimal (10,2)) as Wareneinsatz
+cast(sum(ve.[Cost Posted to G_L]) * -1 as decimal (10,2)) as Wareneinsatz, 
+case when ena.CustomerType = 4 then 'China' else 'General' end as Kundengruppe
 from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Value Entry] as ve with (nolock)
 
 left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Return Reason] as rr
       on ve.[Return Reason Code] = rr.Code
+      
+left outer join 
+(
+select 
+ena.[Customer No_],
+max(ena.[Created at]) as CreatedAt, 
+max(ena.[Customer Type Id]) as CustomerType
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCAccount] as ena 
+group by 
+ena.[Customer No_]
+) as ena
+	on ve.[Source No_] = ena.[Customer No_]
 
 left outer join Urban_NAV600_SL.[dbo].[Urban-Brand GmbH$Posted Document Dimension] AS [PDD] with(NOLOCK) 
       ON ve.[Document No_] = [PDD].[Document No_] AND ve.[Document Line No_] = [PDD].[Line No_] and pdd.[Table ID] in (113,115) and pdd.[Dimension Code]='KATEGORIE'
@@ -71,7 +84,8 @@ ve.[Global Dimension 2 Code],
 ve.[Global Dimension 1 Code],
 ve.[External Document No_],
 ve.[Document Type],
-rr.[Description]
+rr.[Description], 
+ena.CustomerType
 
 union all
 
@@ -96,11 +110,24 @@ cast(case when rle.[Document No_] like 'VKR%' then 'Verkauf' when rle.[Document 
 cast(null as varchar (23)) as Retourengrund,
 cast(sum(rle.Quantity) * -1 as bigint) as Absatz,
 cast(sum(rle.[Total Price]) * -1 as decimal (10,2)) as UmsatzOhneUSt,
-cast(0 as decimal (10,2)) as Wareneinsatz
+cast(0 as decimal (10,2)) as Wareneinsatz, 
+case when ena.CustomerType = 4 then 'China' else 'General' end as Kundengruppe
 from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Res_ Ledger Entry] as rle with (nolock)
 
 inner join  Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Resource] as r with (nolock)
       on rle.[Resource No_] = r.No_
+      
+left outer join 
+(
+select 
+ena.[Customer No_],
+max(ena.[Created at]) as CreatedAt, 
+max(ena.[Customer Type Id]) as CustomerType
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCAccount] as ena 
+group by 
+ena.[Customer No_]
+) as ena
+	on rle.[Source No_] = ena.[Customer No_]
 
 left outer join [Urban_NAV600_SL].[dbo].[Urban-Brand GmbH$Ledger Entry Dimension] as pdd  with (nolock)
       on rle.[Entry No_] = pdd.[Entry No_] and pdd.[Table ID] = '203' and pdd.[Dimension Code] = 'KATEGORIE'
@@ -125,4 +152,5 @@ rle.[Posting Date],
 rle.[Reason Code],
 rle.[Global Dimension 2 Code],
 rle.[Global Dimension 1 Code],
-rle.[External Document No_]
+rle.[External Document No_], 
+ena.CustomerType
