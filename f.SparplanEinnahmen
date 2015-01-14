@@ -1,0 +1,13 @@
+select 
+year(rle.[Posting Date]) as Jahr,
+MONTH(rle.[Posting Date]) as Monat,
+--rle.[Document No_], 
+cast(sum(rle.[Total Price]) * -1 as decimal (10,2)) as EinnahmenOhneUst
+from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Res_ Ledger Entry] as rle
+where [Resource No_] like 'SPARPLAN%' --and year(rle.[Posting Date]) = 2014 and MONTH(rle.[Posting Date]) = 10 and rle.[Document No_] Like '%VKR%'
+Group By
+year(rle.[Posting Date]),
+MONTH(rle.[Posting Date])
+order by
+year(rle.[Posting Date]),
+MONTH(rle.[Posting Date]) asc
