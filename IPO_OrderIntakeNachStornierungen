@@ -71,5 +71,9 @@ cast(esh.[Total Shipment Gross Amount] as decimal (20,2)) as OrderIntakeIncVAT,
 cast(0 as int) as OrderQuantity
 from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesHeader] as esh 
 left outer join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCAccount] as ena
-	on esh.[Sell-to Account No_] = ena.No_
+on esh.[Sell-to Account No_] = ena.No_
+inner join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Shipment Header] as sh 
+	on esh.[External Document No_] = sh.[External Document No_]
 where ena.[Customer No_] not in ('')
+
+
