@@ -16,7 +16,7 @@ inner join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Shipment Header] as sh
 	on esh.[External Document No_] = sh.[External Document No_]
 inner join Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCAccount] as ena
 	on esh.[Sell-to Account No_] = ena.No_
-where ena.No_ = 'K100210450'
+where ena.[Customer No_] not in ('')
 Group By 
 YEAR(esh.[Order Date]),
 esh.[Sell-to Account No_], 
