@@ -17,11 +17,12 @@ o.OrderQuantity,
 o.SellToAccountNo, 
 o.[Shop Code],
 auftragsstatus.AuftragsstatusGesamt, 
-erst.AnzahlBestellungen as AnzahlBestellungenKunde, 
+erst.AnzahlBestellungen as AnzahlBestellungenKundeGesamt, 
 erst.DatumErstbestellung,
+erst.DatumLetzteBestellung,
 p.[Exchange Rate Amount]
 
-from BI_Data.item.OrderIntakeNachStornierungenOhneShipping as o 
+from BI_Data.item.OrderIntakeNachStornierungen as o 
 
 left outer join
 (
@@ -40,6 +41,7 @@ left outer join
 (
 select
 cast(min(esh.[Order Date]) as date) as DatumErstbestellung,
+CAST(max(esh.[Order Date]) as date) as DatumLetzteBestellung,
 COUNT(distinct esh.[External Document No_]) as AnzahlBestellungen,
 esh.[Sell-to Account No_]
 from Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesHeader] as esh with (nolock)
