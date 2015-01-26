@@ -1,0 +1,38 @@
+select 
+g.[G_L Account No_], 
+c.Kundengruppe, 
+cast(sum(g.Amount) * -1 as decimal (20,2)) as Amount
+
+from
+(
+SELECT 
+distinct c.[Transaction No_], 
+c.[Sell-to Customer No_] as Debitor, 
+case when ena.[Customer Type Id] = 4 then 'China' else 'General' end as Kundengruppe
+FROM [urban_NAV600].[dbo].[Urban-Brand GmbH$Cust_ Ledger Entry] as c 
+left outer join urban_NAV600.dbo.[Urban-Brand GmbH$eBayNavCAccount] as ena
+	on c.[Customer No_] = ena.[Customer No_]
+where YEAR(c.[Posting Date]) = 2013
+) as c 
+
+inner join
+(
+Select 
+gl.[G_L Account No_], 
+gl.[Transaction No_],
+sum(gl.Amount) as Amount
+from urban_NAV600.dbo.[Urban-Brand GmbH$G_L Entry] as gl 
+where gl.[G_L Account No_] like '4%' and gl.[Document Type] = 3 and gl.[Global Dimension 2 Code] = 'DE_WIN'
+Group by 
+gl.[G_L Account No_],
+gl.[Transaction No_]
+) as g
+	on c.[Transaction No_] = g.[Transaction No_]
+
+Group by 
+g.[G_L Account No_], 
+c.Kundengruppe
+
+order by 
+g.[G_L Account No_], 
+c.Kundengruppe
