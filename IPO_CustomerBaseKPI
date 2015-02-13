@@ -1,0 +1,133 @@
+--truncate table BI_Data.cus.CustomerBaseIPO
+
+DECLARE @date date;
+SELECT @date = CAST('2010-10-01' AS DATE)
+
+Select
+CAST(DATEADD(DAY, -DATEPART(DD, @date), @date)  AS DATE) as Datum,
+OrderIntake.SellToAccountNo, 
+OrderIntake.Kundengruppe, 
+cast(COUNT(DISTINCT CASE WHEN (DATEDIFF(MONTH, OrderIntake.[OrderDate], @date)) BETWEEN 1 AND 12 THEN OrderIntake.[External Document No_] ELSE NULL END) as int) AS AnzahlBestellungenLetzte12Monate,
+cast(isnull(sum(case when (DATEDIFF(MONTH, OrderIntake.[OrderDate], @date)) BETWEEN 1 AND 12 THEN OrderIntake.OrderintakeIncVat else NULL END),0) as decimal (10,2)) as OrderIntakeIncVATLetzte12Monate,
+(
+Select 
+count( distinct esh3.[External Document No_])
+from term29.term29.term29.Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesHeader] as esh3 
+inner join term29.term29.term29.Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Shipment Header] as sh 
+	on esh3.[External Document No_] = sh.[External Document No_]
+where esh3.[Order Date] <= CAST(DATEADD(DAY, -DATEPART(DD, @date), @date)  AS DATE) and esh3.[Sell-to Account No_] = OrderIntake.SellToAccountNo
+) as AnzahlBestellungenInsgesamtBisStichtag
+
+into #tmp
+
+from
+
+(
+Select 
+o.[External Document No_], 
+o.SellToAccountNo,
+o.[Customer No_], 
+o.OrderDate, 
+o.[Shop Code],
+o.Kundengruppe,
+sum(o.OrderQuantity) as OrderQuantity, 
+case when o.[Shop Code] = 'WINDELN_CH' then sum(o.OrderIntakeIncVAT/p.[Exchange Rate Amount]) else sum(o.OrderIntakeIncVAT) end as OrderintakeIncVat
+
+from 
+(
+Select 
+distinct esh.[External Document No_], 
+esh.[Sell-to Account No_] as SellToAccountNo,
+ena.[Customer No_],
+cast(esh.[Order Date] as date) as OrderDate, 
+case when ena.[Customer Type Id] = 4 then 'China' else 'General' end as Kundengruppe,
+esl.[Shop Code], 
+cast(sum(esl.Quantity * esl.[Unit Price]) as decimal (20,2)) as OrderIntakeIncVAT, 
+cast(sum(esl.Quantity) as int) as OrderQuantity
+
+from term29.term29.term29.Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesHeader] as esh with (nolock)
+
+inner join term29.term29.term29.Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesLine] as esl with (nolock) 
+	on esh.No_ = esl.[Document No_]
+
+inner join 
+(	
+Select 
+distinct ssh.[External Document No_] as ExterneBelegnummer 
+from term29.term29.term29.Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Shipment Header] as ssh with (nolock)
+) as s
+	on esh.[External Document No_] = s.ExterneBelegnummer
+
+left outer join term29.term29.term29.Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCAccount] as ena
+	on esh.[Sell-to Account No_] = ena.No_
+
+where ena.[Customer No_] not in ('') and esl.No_ not like 'REF%'
+
+Group By 
+esh.[External Document No_], 
+esh.[Sell-to Account No_],
+ena.[Customer No_],
+esh.[Order Date], 
+ena.[Customer Type Id],
+esl.[Shop Code]
+
+union all 
+
+Select 
+distinct esh.[External Document No_], 
+esh.[Sell-to Account No_] as SellToAccountNo,
+ena.[Customer No_],
+cast(esh.[Order Date] as date) as OrderDate, 
+case when ena.[Customer Type Id] = 4 then 'China' else 'General' end as Kundengruppe,
+esh.[Shop Code], 
+cast(esh.[Total Shipment Gross Amount] as decimal (20,2)) as OrderIntakeIncVAT, 
+cast(0 as int) as OrderQuantity
+
+from term29.term29.term29.Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCSalesHeader] as esh 
+
+left outer join term29.term29.term29.Urban_NAV600_SL.dbo.[Urban-Brand GmbH$eBayNavCAccount] as ena
+on esh.[Sell-to Account No_] = ena.No_
+
+inner join 
+(
+select distinct sh.[External Document No_]
+from term29.term29.term29.Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Sales Shipment Header] as sh 
+) as sh 
+	on esh.[External Document No_] = sh.[External Document No_]
+
+where ena.[Customer No_] not in ('')
+) as o
+	
+cross apply
+   (select top(1) c.[Exchange Rate Amount]
+    from term29.term29.term29.Urban_NAV600_SL.dbo.[Urban-Brand GmbH$Currency Exchange Rate] as c
+    where c.[Currency Code] = 'CHF'and  c.[Starting Date] <= o.OrderDate ORDER BY c.[Starting Date] DESC) p
+    
+Group By 
+o.[External Document No_], 
+o.SellToAccountNo, 
+o.[Customer No_],
+o.OrderDate, 
+o.[Shop Code],
+o.Kundengruppe
+) as OrderIntake
+
+where OrderIntake.[OrderDate] <= CAST(DATEADD(DAY, -DATEPART(DD, @date), @date)  AS DATE)
+
+Group By 
+OrderIntake.SellToAccountNo, 
+OrderIntake.Kundengruppe 
+
+
+insert into [BI_Data].[cus].[CustomerBaseIPO]( [Datum]
+      ,[Sell-to Account No_]
+      ,[Kundengruppe]
+      ,[AnzahlBestellungenLetzte12Monate]
+      ,[OrderIntakeIncVATLetzte12Monate]
+      ,[AnzahlBestellungenInsgesamtBisStichtag])
+
+
+select * from #tmp
+
+
+drop table #tmp 
